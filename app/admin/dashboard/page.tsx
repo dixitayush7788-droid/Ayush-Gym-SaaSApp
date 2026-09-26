@@ -1,6 +1,6 @@
 // app/admin/dashboard/page.tsx
 //
-// Server Component. Fetches all metrics directly from public.tenants.
+// Server Component. Fetches all metrics directly from public.gyms.
 // RLS on the table guarantees only super admins receive rows.
 
 import Link from 'next/link';
@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 // -----------------------------------------------------------------------------
 interface TenantMetricRow {
   status: 'active' | 'inactive' | 'suspended';
-  operational_status: 'open' | 'closed' | 'delayed';
+  op_status: 'open' | 'closed' | 'delayed';
 }
 
 interface DashboardMetrics {
@@ -33,8 +33,8 @@ async function getMetrics(): Promise<DashboardMetrics> {
 
   // Single round trip: fetch only the two columns we need, filter soft-deleted.
   const { data, error } = await supabase
-    .from('tenants')
-    .select('status, operational_status')
+    .from('gyms')
+    .select('status, op_status')
     .is('deleted_at', null)
     .returns<TenantMetricRow[]>();
 
@@ -54,9 +54,9 @@ async function getMetrics(): Promise<DashboardMetrics> {
     totalOnboarded: rows.length,
     activeSubscriptions: rows.filter((r) => r.status === 'active').length,
     operationalBreakdown: {
-      open: rows.filter((r) => r.operational_status === 'open').length,
-      closed: rows.filter((r) => r.operational_status === 'closed').length,
-      delayed: rows.filter((r) => r.operational_status === 'delayed').length,
+      open: rows.filter((r) => r.op_status === 'open').length,
+      closed: rows.filter((r) => r.op_status === 'closed').length,
+      delayed: rows.filter((r) => r.op_status === 'delayed').length,
     },
   };
 }
