@@ -75,13 +75,14 @@ export async function loginAction(
     return { status: 'error', message };
   }
 
-  const { data: adminRow, error: adminError } = await supabase
-    .from('super_admins')
-    .select('id, is_active')
-    .eq('id', data.user.id)
+  const { data: roleRow, error: roleError } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', data.user.id)
+    .eq('role', 'super_admin')
     .maybeSingle();
 
-  if (adminError || !adminRow || adminRow.is_active !== true) {
+  if (roleError || !roleRow || roleRow.role !== 'super_admin') {
     await supabase.auth.signOut();
     return {
       status: 'error',
