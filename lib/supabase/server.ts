@@ -12,10 +12,17 @@
 //
 // Both use the ANON key. RLS enforces access. Never use the service role
 // key here — reserve it for isolated backend jobs.
+//
 
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+type SupabaseCookieToSet = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
 
 // -----------------------------------------------------------------------------
 // Environment validation (fail fast at module load, not at first query)
@@ -50,10 +57,10 @@ export function createClient(): SupabaseClient {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: SupabaseCookieToSet[]) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options as CookieOptions);
+            cookieStore.set(name, value, options);
           });
         } catch {
           // Called from a React Server Component — cookies are read-only.
@@ -86,11 +93,11 @@ export function createRouteHandlerClient(): SupabaseClient {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: SupabaseCookieToSet[]) {
         // In Route Handlers and Server Actions, `cookies().set()` is
         // permitted and will be flushed to the outgoing response.
         cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options as CookieOptions);
+          cookieStore.set(name, value, options);
         });
       },
     },
