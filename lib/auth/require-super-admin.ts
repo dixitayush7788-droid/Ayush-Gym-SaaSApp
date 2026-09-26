@@ -21,17 +21,31 @@ export async function requireSuperAdmin(): Promise<SuperAdminProfile> {
     redirect('/login');
   }
 
-  const { data, error } = await supabase
-    .from('super_admins')
-    .select('id, email, full_name, is_active')
-    .eq('id', user.id)
-    .maybeSingle<SuperAdminProfile>();
+  const [{ data: roleRow, error: roleError }, { data: profileRow, error: profileError }] =
+    await Promise.all([
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle(),
+      supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle<{ full_name: string | null }>(),
+    ]);
 
-  if (error || !data || data.is_active !== true) {
+  if (roleError || !roleRow || roleRow.role !== 'super_admin') {
     redirect('/unauthorized');
   }
 
-  return data;
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    full_name: profileError ? null : profileRow?.full_name ?? null,
+    is_active: true,
+  };
 }
 
 export async function getSuperAdminOrNull(): Promise<SuperAdminProfile | null> {
@@ -43,11 +57,25 @@ export async function getSuperAdminOrNull(): Promise<SuperAdminProfile | null> {
 
   if (!user) return null;
 
-  const { data } = await supabase
-    .from('super_admins')
-    .select('id, email, full_name, is_active')
-    .eq('id', user.id)
-    .maybeSingle<SuperAdminProfile>();
+  const { data: roleRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'super_admin')
+    .maybeSingle();
 
-  return data?.is_active ? data : null;
+  if (!roleRow || roleRow.role !== 'super_admin') return null;
+
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .maybeSingle<{ full_name: string | null }>();
+
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    full_name: profileRow?.full_name ?? null,
+    is_active: true,
+  };
 }
