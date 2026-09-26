@@ -72,8 +72,8 @@ export function createClient(): SupabaseClient {
  * Returns a Supabase client that CAN persist refreshed auth cookies.
  *
  * Use in:
- *   • app/api/**/route.ts   (POST, PUT, DELETE, PATCH)
- *   • Server Actions         ("use server")
+ *   • app/api/<route>/route.ts   (POST, PUT, DELETE, PATCH)
+ *   • Server Actions             ("use server")
  *
  * Not needed for GET route handlers or RSC pages — use `createClient()`
  * there instead.
