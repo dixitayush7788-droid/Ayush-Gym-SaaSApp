@@ -11,12 +11,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Creates a fresh browser Supabase client.
- *
- * Safe to call multiple times — @supabase/ssr returns a cached singleton
- * per browser tab, so calling it in multiple components is fine.
- */
 export function createClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -24,14 +18,12 @@ export function createClient(): SupabaseClient {
   if (!url || !anonKey) {
     throw new Error(
       '[supabase/client] Missing NEXT_PUBLIC_SUPABASE_URL or ' +
-        'NEXT_PUBLIC_SUPABASE_ANON_KEY. Check your .env.local file.'
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY. Check your deployment environment.'
     );
   }
 
   return createBrowserClient(url, anonKey, {
     auth: {
-      // Persist the session in cookies (not localStorage) so that the
-      // server-side client can read it during SSR.
       flowType: 'pkce',
       autoRefreshToken: true,
       persistSession: true,
@@ -39,10 +31,3 @@ export function createClient(): SupabaseClient {
     },
   });
 }
-
-/**
- * Convenience singleton for client components that only need to read the
- * current session. Prefer calling `createClient()` inside the component so
- * each module boundary stays independent and tree-shakeable.
- */
-export const supabase = createClient();
