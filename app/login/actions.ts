@@ -57,12 +57,35 @@ export async function loginAction(
     };
   }
 
-  const supabase = createRouteHandlerClient();
+  let supabase: ReturnType<typeof createRouteHandlerClient>;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    supabase = createRouteHandlerClient();
+  } catch (error) {
+    console.error('[loginAction] failed to create Supabase client:', error);
+    return {
+      status: 'error',
+      message: 'Authentication service is temporarily unavailable. Please try again.',
+    };
+  }
+
+  let data;
+  let error;
+
+  try {
+    const result = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    data = result.data;
+    error = result.error;
+  } catch (error) {
+    console.error('[loginAction] sign-in request threw:', error);
+    return {
+      status: 'error',
+      message: 'Unable to sign in right now. Please try again.',
+    };
+  }
 
   if (error || !data.user) {
     const message =
@@ -75,15 +98,40 @@ export async function loginAction(
     return { status: 'error', message };
   }
 
-  const { data: roleRow, error: roleError } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', data.user.id)
-    .eq('role', 'super_admin')
-    .maybeSingle();
+  let roleRow: { role: 'super_admin' } | null = null;
+  let roleError: { message: string } | null = null;
+
+  try {
+    const result = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', data.user.id)
+      .eq('role', 'super_admin')
+      .maybeSingle<{ role: 'super_admin' }>();
+
+    roleRow = result.data;
+    roleError = result.error;
+  } catch (error) {
+    console.error('[loginAction] role lookup threw:', error);
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.error('[loginAction] cleanup sign-out failed:', signOutError);
+    }
+
+    return {
+      status: 'error',
+      message: 'Unable to verify Super Admin access right now. Please try again.',
+    };
+  }
 
   if (roleError || !roleRow || roleRow.role !== 'super_admin') {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.error('[loginAction] cleanup sign-out failed:', signOutError);
+    }
+
     return {
       status: 'error',
       message: 'This account does not have Super Admin access.',
