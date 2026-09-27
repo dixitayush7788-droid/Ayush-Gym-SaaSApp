@@ -24,7 +24,7 @@ function safeRedirectTarget(raw: FormDataEntryValue | null): string {
   if (value.startsWith('/') && !value.startsWith('//')) {
     return value;
   }
-  return '/admin';
+  return '/admin/dashboard';
 }
 
 export async function loginAction(
