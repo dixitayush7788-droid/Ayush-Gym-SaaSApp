@@ -11,8 +11,8 @@ import { createClient } from '@/lib/supabase/server';
 // Types (narrow shape of what we SELECT — keeps the query explicit)
 // -----------------------------------------------------------------------------
 interface TenantMetricRow {
-  status: 'active' | 'inactive' | 'suspended';
-  op_status: 'open' | 'closed' | 'delayed';
+  is_active: boolean;
+  op_status: 'OPEN' | 'CLOSED' | 'DELAYED';
 }
 
 interface DashboardMetrics {
@@ -34,7 +34,7 @@ async function getMetrics(): Promise<DashboardMetrics> {
   // Single round trip: fetch only the two columns we need, filter soft-deleted.
   const { data, error } = await supabase
     .from('gyms')
-    .select('status, op_status')
+    .select('is_active, op_status')
     .is('deleted_at', null)
     .returns<TenantMetricRow[]>();
 
@@ -52,11 +52,11 @@ async function getMetrics(): Promise<DashboardMetrics> {
 
   return {
     totalOnboarded: rows.length,
-    activeSubscriptions: rows.filter((r) => r.status === 'active').length,
+    activeSubscriptions: rows.filter((r) => r.is_active).length,
     operationalBreakdown: {
-      open: rows.filter((r) => r.op_status === 'open').length,
-      closed: rows.filter((r) => r.op_status === 'closed').length,
-      delayed: rows.filter((r) => r.op_status === 'delayed').length,
+      open: rows.filter((r) => r.op_status === 'OPEN').length,
+      closed: rows.filter((r) => r.op_status === 'CLOSED').length,
+      delayed: rows.filter((r) => r.op_status === 'DELAYED').length,
     },
   };
 }
