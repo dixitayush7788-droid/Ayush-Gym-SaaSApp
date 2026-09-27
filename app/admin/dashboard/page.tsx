@@ -7,9 +7,6 @@ import Link from 'next/link';
 import { Building2, CheckCircle2, DoorOpen, DoorClosed, Clock, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 
-// -----------------------------------------------------------------------------
-// Types (narrow shape of what we SELECT — keeps the query explicit)
-// -----------------------------------------------------------------------------
 interface TenantMetricRow {
   is_active: boolean;
   op_status: 'OPEN' | 'CLOSED' | 'DELAYED';
@@ -25,45 +22,46 @@ interface DashboardMetrics {
   };
 }
 
-// -----------------------------------------------------------------------------
-// Data fetching
-// -----------------------------------------------------------------------------
 async function getMetrics(): Promise<DashboardMetrics> {
-  const supabase = createClient();
+  try {
+    const supabase = createClient();
 
-  // Single round trip: fetch only the two columns we need, filter soft-deleted.
-  const { data, error } = await supabase
-    .from('gyms')
-    .select('is_active, op_status')
-    .is('deleted_at', null)
-    .returns<TenantMetricRow[]>();
+    const { data, error } = await supabase
+      .from('gyms')
+      .select('is_active, op_status')
+      .is('deleted_at', null)
+      .returns<TenantMetricRow[]>();
 
-  if (error) {
-    // Fail soft — dashboard should never crash on a transient DB error.
-    console.error('[dashboard] failed to load metrics:', error.message);
+    if (error) {
+      console.error('[dashboard] failed to load metrics:', error.message);
+      return {
+        totalOnboarded: 0,
+        activeSubscriptions: 0,
+        operationalBreakdown: { open: 0, closed: 0, delayed: 0 },
+      };
+    }
+
+    const rows = data ?? [];
+
+    return {
+      totalOnboarded: rows.length,
+      activeSubscriptions: rows.filter((r) => r.is_active).length,
+      operationalBreakdown: {
+        open: rows.filter((r) => r.op_status === 'OPEN').length,
+        closed: rows.filter((r) => r.op_status === 'CLOSED').length,
+        delayed: rows.filter((r) => r.op_status === 'DELAYED').length,
+      },
+    };
+  } catch (error) {
+    console.error('[dashboard] metrics query threw:', error);
     return {
       totalOnboarded: 0,
       activeSubscriptions: 0,
       operationalBreakdown: { open: 0, closed: 0, delayed: 0 },
     };
   }
-
-  const rows = data ?? [];
-
-  return {
-    totalOnboarded: rows.length,
-    activeSubscriptions: rows.filter((r) => r.is_active).length,
-    operationalBreakdown: {
-      open: rows.filter((r) => r.op_status === 'OPEN').length,
-      closed: rows.filter((r) => r.op_status === 'CLOSED').length,
-      delayed: rows.filter((r) => r.op_status === 'DELAYED').length,
-    },
-  };
 }
 
-// -----------------------------------------------------------------------------
-// Sub-components
-// -----------------------------------------------------------------------------
 interface MetricCardProps {
   label: string;
   value: number;
@@ -118,15 +116,11 @@ function MetricCard({
   );
 }
 
-// -----------------------------------------------------------------------------
-// Page
-// -----------------------------------------------------------------------------
 export default async function DashboardPage() {
   const metrics = await getMetrics();
 
   return (
     <div className="space-y-8">
-      {/* Page header + CTA */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
@@ -146,7 +140,6 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Primary metric cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Total Onboarded Gyms"
@@ -176,7 +169,6 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Operational status breakdown */}
       <section>
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
           Operational Status Breakdown
