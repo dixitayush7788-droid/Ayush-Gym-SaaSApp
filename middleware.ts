@@ -1,17 +1,15 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
+import { createMiddlewareClient } from '@/lib/supabase/middleware';
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
 
 export async function middleware(request: NextRequest) {
-  return NextResponse.next();
+  const { supabase, response } = createMiddlewareClient(request);
+
+  // Refresh the Supabase session before protected Server Components render.
+  await supabase.auth.getUser();
+
+  return response;
 }
